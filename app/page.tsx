@@ -53,7 +53,7 @@ export default function Portfolio() {
           <div className="flex justify-center gap-4">
                   <Button
                     size="lg"
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-blue-600 hover:bg-blue-700 cursor-pointer"
                     onClick={() => setIsContactOpen(true)}
                   >
                     <Mail className="w-4 h-4 mr-2" />
