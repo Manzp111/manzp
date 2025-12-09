@@ -51,7 +51,6 @@ export async function POST(req: Request) {
       .select(); // return inserted row
 
     if (dbError) {
-      console.log("Supabase insert error:", dbError);
       return NextResponse.json({ error: "Database error" }, { status: 500 });
     }
 
@@ -71,7 +70,6 @@ export async function POST(req: Request) {
       `,
     };
     const adminResult = await sgMail.send(adminMsg);
-    console.log("Admin email result:", adminResult);
 
     // 3️⃣ Auto-reply to sender
     const userMsg = {
@@ -85,15 +83,14 @@ export async function POST(req: Request) {
       `,
     };
     const userResult = await sgMail.send(userMsg);
-    console.log("Auto-reply result:", userResult);
 
     return NextResponse.json({
       success: true,
+      message:"email sent wait for answer",
       contact: contactRow,
   
     });
   } catch (error) {
-    console.log("SendGrid / API error:", error);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
