@@ -127,8 +127,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Contact saved and emails sent (check logs for errors)",
-      contact: contactRow,
+      message: "Thanks for contacting Gilbert. He will reply as soon as possible.",
+     
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
