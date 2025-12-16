@@ -2,61 +2,90 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import sgMail from "@sendgrid/mail";
 
-// Initialize SendGrid
+// ----------------------------
+// Initialize services using .env.local
+// ----------------------------
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
-// Initialize Supabase client
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY! // use the anon key from .env.local
 );
 
 // ----------------------------
-// GET: Return all contacts
+// GET: Fetch all contacts
 // ----------------------------
 export async function GET() {
+  console.log("GET /api/contact called");
+
   try {
-    const { data, error } = await supabase
+    const { data, error, status } = await supabase
       .from("contacts")
       .select("*")
-      .order("created_at", { ascending: false }); // newest first
+      .order("created_at", { ascending: false });
+
+    console.log("Supabase response:", { data, error, status });
 
     if (error) {
-      console.log("Supabase GET error:", error);
-      return NextResponse.json({ error: "Database fetch error" }, { status: 500 });
+      console.error("Supabase GET error:", error);
+      return NextResponse.json(
+        { error: "Database fetch failed", details: error },
+        { status: 500 }
+      );
     }
 
+    console.log("Data fetched successfully:", data);
     return NextResponse.json({ contacts: data });
   } catch (err) {
-    console.log("Unexpected GET error:", err);
-    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
+    console.error("Unexpected GET error:", err);
+    return NextResponse.json({ error: "Unexpected error", details: String(err) }, { status: 500 });
   }
 }
 
 // ----------------------------
-// POST: Add a new contact + send emails
+// POST: Add new contact + send emails
 // ----------------------------
 export async function POST(req: Request) {
-  try {
-    const { fullName, email, message } = await req.json();
+  console.log("POST /api/contact called");
 
+  try {
+    let body;
+    try {
+      body = await req.json();
+      console.log("Request body:", body);
+    } catch (err) {
+      console.error("Failed to parse JSON:", err);
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const { fullName, email, message } = body;
     if (!fullName || !email || !message) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
 
     // 1️⃣ Save to Supabase
-    const { data, error: dbError } = await supabase
-      .from("contacts")
-      .insert([{ full_name: fullName, email, message }])
-      .select(); // return inserted row
+    let contactRow;
+    try {
+      const { data, error: dbError, status } = await supabase
+        .from("contacts")
+        .insert([{ full_name: fullName, email, message }])
+        .select();
 
-    if (dbError) {
-      return NextResponse.json({ error: "Database error" }, { status: 500 });
+      console.log("Supabase insert response:", { data, dbError, status });
+
+      if (dbError) {
+        console.error("Supabase insert error:", dbError);
+        return NextResponse.json({ error: "Database error", details: dbError }, { status: 500 });
+      }
+
+      contactRow = data?.[0];
+      console.log("Inserted contact:", contactRow);
+    } catch (err) {
+      console.error("Unexpected Supabase error:", err);
+      return NextResponse.json({ error: "Supabase operation failed", details: String(err) }, { status: 500 });
     }
 
-    const contactRow = data?.[0];
-
-    // 2️⃣ Email to YOU (admin)
+    // 2️⃣ Send admin email
     const adminMsg = {
       to: process.env.FROM_EMAIL!,
       from: process.env.FROM_EMAIL!,
@@ -69,9 +98,15 @@ export async function POST(req: Request) {
         <p>${message}</p>
       `,
     };
-    const adminResult = await sgMail.send(adminMsg);
 
-    // 3️⃣ Auto-reply to sender
+    try {
+      const adminResult = await sgMail.send(adminMsg);
+      console.log("Admin email sent:", adminResult);
+    } catch (err) {
+      console.error("SendGrid admin email error:", err);
+    }
+
+    // 3️⃣ Auto-reply to user
     const userMsg = {
       to: email,
       from: process.env.FROM_EMAIL!,
@@ -82,15 +117,22 @@ export async function POST(req: Request) {
         <p>Best regards,<br>Gilbert's Portfolio</p>
       `,
     };
-    const userResult = await sgMail.send(userMsg);
+
+    try {
+      const userResult = await sgMail.send(userMsg);
+      console.log("User email sent:", userResult);
+    } catch (err) {
+      console.error("SendGrid user email error:", err);
+    }
 
     return NextResponse.json({
       success: true,
-      message:"email sent wait for answer",
+      message: "Contact saved and emails sent (check logs for errors)",
       contact: contactRow,
-  
     });
-  } catch (error) {
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("POST /api/contact unexpected error:", message);
+    return NextResponse.json({ error: message || "Something went wrong" }, { status: 500 });
   }
 }

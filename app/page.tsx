@@ -22,6 +22,7 @@ export default function Portfolio() {
               <a href="#skills" className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">Skills</a>
               <a href="#projects" className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">Projects</a>
               <a href="#contact" className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">Contact</a>
+              <a href="https://drive.google.com/file/d/1LN2sSX10VopwH-CEZg-WeR4vRK5oTOab/view?usp=sharing" className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"> CV</a>
             </div>
           </div>
         </div>
